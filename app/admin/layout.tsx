@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import LogoutButton from '@/components/auth/LogoutButton'
@@ -8,11 +9,22 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/auth/login')
 
-  const { data: profile } = await supabase
+  let { data: profile } = await supabase
     .from('profiles')
     .select('email, role')
     .eq('id', user.id)
     .single()
+
+  // Same fallback as dashboard: create profile row if missing
+  if (!profile) {
+    const admin = createAdminClient()
+    const { data: created } = await admin
+      .from('profiles')
+      .upsert({ id: user.id, email: user.email ?? '', role: 'user' })
+      .select('email, role')
+      .single()
+    profile = created
+  }
 
   if (profile?.role !== 'admin') {
     redirect('/dashboard')
@@ -44,7 +56,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 
         <div style={{ flex: 1 }} />
         <Link href="/dashboard" style={{ fontSize: '0.875rem', color: 'var(--text-muted)', textDecoration: 'none' }}>← My projects</Link>
-        <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>{profile?.email}</span>
+        <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>{profile?.email ?? user.email}</span>
         <LogoutButton />
       </nav>
       <main>{children}</main>

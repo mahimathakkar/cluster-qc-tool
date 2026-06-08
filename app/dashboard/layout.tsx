@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import LogoutButton from '@/components/auth/LogoutButton'
@@ -9,11 +10,24 @@ export default async function DashboardLayout({ children }: { children: React.Re
 
   if (!user) redirect('/auth/login')
 
-  const { data: profile } = await supabase
+  let { data: profile } = await supabase
     .from('profiles')
     .select('email, role')
     .eq('id', user.id)
     .single()
+
+  // Profile row missing — create it via service-role client (bypasses RLS).
+  // This handles: admin accounts pre-dating the trigger, Google OAuth first-logins
+  // where the trigger hasn't fired yet, or any other timing edge cases.
+  if (!profile) {
+    const admin = createAdminClient()
+    const { data: created } = await admin
+      .from('profiles')
+      .upsert({ id: user.id, email: user.email ?? '', role: 'user' })
+      .select('email, role')
+      .single()
+    profile = created
+  }
 
   return (
     <div style={{ minHeight: '100vh', background: 'var(--bg)' }}>
@@ -56,7 +70,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
         )}
 
         <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>
-          {profile?.email}
+          {profile?.email ?? user.email}
         </span>
 
         <LogoutButton />

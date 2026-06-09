@@ -70,18 +70,18 @@ function ToastItem({ toast }: { toast: Toast }) {
 
   return (
     <div style={{
-      padding: '0.625rem 1.125rem',
-      borderRadius: '8px',
+      padding: '10px 16px',
+      borderRadius: 12,
       background: bg,
       color,
-      fontSize: '0.875rem',
+      fontSize: 14,
       fontWeight: 500,
-      boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+      maxWidth: 380,
+      boxShadow: '0 4px 16px rgba(0,0,0,0.18)',
       pointerEvents: 'auto',
       opacity: visible ? 1 : 0,
-      transform: visible ? 'translateY(0)' : 'translateY(0.5rem)',
+      transform: visible ? 'translateY(0)' : 'translateY(8px)',
       transition: 'opacity 0.2s, transform 0.2s',
-      whiteSpace: 'nowrap',
     }}>
       {toast.message}
     </div>

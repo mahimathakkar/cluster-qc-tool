@@ -3,9 +3,10 @@
 import { useState, useCallback, useRef } from 'react'
 import { getClusterStoragePaths, getSignedUrls } from '@/lib/storage'
 
+type UrlEntry = { full?: string; thumb?: string }
+
 export function useImageCache(projectId: string) {
-  // filename -> signed URL
-  const [urlCache, setUrlCache] = useState<Map<string, string>>(new Map())
+  const [urlCache, setUrlCache] = useState<Map<string, UrlEntry>>(new Map())
   const loadingRef = useRef<Set<string>>(new Set())
 
   const loadClusterImages = useCallback(async (clusterId: string): Promise<void> => {
@@ -16,14 +17,20 @@ export function useImageCache(projectId: string) {
       const paths = await getClusterStoragePaths(projectId, clusterId)
       if (paths.length === 0) return
 
-      const storagePaths = paths.map(p => p.storagePath)
-      const urlMap = await getSignedUrls(storagePaths)
+      // Fetch full + thumbnail signed URLs in one batch call
+      const allPaths = [
+        ...paths.map(p => p.storagePath),
+        ...paths.map(p => p.thumbnailPath),
+      ]
+      const urlMap = await getSignedUrls(allPaths)
 
       setUrlCache(prev => {
         const next = new Map(prev)
-        paths.forEach(({ filename, storagePath }) => {
-          const url = urlMap.get(storagePath)
-          if (url) next.set(filename, url)
+        paths.forEach(({ filename, storagePath, thumbnailPath }) => {
+          next.set(filename, {
+            full: urlMap.get(storagePath),
+            thumb: urlMap.get(thumbnailPath),
+          })
         })
         return next
       })
@@ -32,14 +39,20 @@ export function useImageCache(projectId: string) {
     }
   }, [projectId])
 
+  // Returns thumbnail URL if available, falls back to full URL
   const getImageUrl = useCallback((filename: string): string | undefined => {
-    return urlCache.get(filename)
+    const entry = urlCache.get(filename)
+    return entry?.thumb || entry?.full
+  }, [urlCache])
+
+  // Returns full-resolution URL
+  const getFullImageUrl = useCallback((filename: string): string | undefined => {
+    return urlCache.get(filename)?.full
   }, [urlCache])
 
   const preloadCluster = useCallback(async (clusterId: string) => {
-    // Non-blocking background preload
     loadClusterImages(clusterId).catch(() => {})
   }, [loadClusterImages])
 
-  return { loadClusterImages, getImageUrl, preloadCluster, urlCache }
+  return { loadClusterImages, getImageUrl, getFullImageUrl, preloadCluster, urlCache }
 }

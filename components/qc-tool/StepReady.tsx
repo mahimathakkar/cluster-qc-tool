@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import type { ClusterState } from '@/lib/types'
 
 interface StepReadyProps {
@@ -9,54 +10,94 @@ interface StepReadyProps {
 }
 
 export default function StepReady({ clusters, projectName, onStart }: StepReadyProps) {
+  const [starting, setStarting] = useState(false)
   const totalFaces = clusters.reduce((sum, c) => sum + c.faces.length, 0)
 
+  function handleStart() {
+    setStarting(true)
+    onStart()
+  }
+
+  const steps = [
+    { n: 1, title: 'Remove', desc: 'Click faces that don\'t belong in each cluster.' },
+    { n: 2, title: 'Merge', desc: 'Combine clusters that belong to the same person.' },
+    { n: 3, title: 'Reassign', desc: 'Decide where each removed face belongs.' },
+    { n: 4, title: 'Export', desc: 'Download a CSV of all changes.' },
+  ]
+
   return (
-    <div style={{ maxWidth: '600px', margin: '4rem auto', padding: '0 1rem', textAlign: 'center' }}>
-      <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>✅</div>
-      <h1 style={{ fontSize: '1.5rem', fontWeight: 700, marginBottom: '0.5rem' }}>
-        Ready to review
-      </h1>
-      <p style={{ color: 'var(--text-muted)', marginBottom: '2rem' }}>
-        <strong>{projectName}</strong> — {clusters.length} clusters, {totalFaces.toLocaleString()} faces uploaded.
-      </p>
+    <div style={{ maxWidth: 560, margin: '48px auto', padding: '0 24px' }}>
+      <div className="card" style={{ padding: 32 }}>
+        {/* Header */}
+        <div style={{ marginBottom: 24 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+            <div style={{
+              width: 32, height: 32, borderRadius: 8, background: 'var(--green-light)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16,
+            }}>✓</div>
+            <h1 style={{ fontSize: 18, fontWeight: 600 }}>Ready to review</h1>
+          </div>
+          <p style={{ fontSize: 13, color: 'var(--text-muted)', lineHeight: 1.6 }}>
+            <strong style={{ color: 'var(--text)' }}>{projectName}</strong> — {clusters.length} clusters, {totalFaces.toLocaleString()} faces uploaded successfully.
+          </p>
+        </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem', marginBottom: '2.5rem' }}>
-        <div className="card" style={{ padding: '1.25rem' }}>
-          <div style={{ fontSize: '1.75rem', fontWeight: 700 }}>{clusters.length}</div>
-          <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>Clusters</div>
+        {/* Stats */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginBottom: 24 }}>
+          <StatCard value={clusters.length} label="Clusters" />
+          <StatCard value={totalFaces.toLocaleString()} label="Faces" />
+          <StatCard value="4" label="Steps" />
         </div>
-        <div className="card" style={{ padding: '1.25rem' }}>
-          <div style={{ fontSize: '1.75rem', fontWeight: 700 }}>{totalFaces.toLocaleString()}</div>
-          <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>Total faces</div>
+
+        {/* Steps list */}
+        <div style={{ marginBottom: 28 }}>
+          <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-subtle)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 12 }}>
+            What you&apos;ll do
+          </p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {steps.map(s => (
+              <div key={s.n} style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+                <div style={{
+                  width: 22, height: 22, borderRadius: '50%', background: 'var(--accent-light)',
+                  color: 'var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: 11, fontWeight: 700, flexShrink: 0, marginTop: 1,
+                }}>
+                  {s.n}
+                </div>
+                <div>
+                  <span style={{ fontWeight: 500, fontSize: 13 }}>{s.title}</span>
+                  <span style={{ fontSize: 13, color: 'var(--text-muted)' }}> — {s.desc}</span>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
-        <div className="card" style={{ padding: '1.25rem' }}>
-          <div style={{ fontSize: '1.75rem', fontWeight: 700 }}>4</div>
-          <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>Steps</div>
-        </div>
+
+        <button
+          className="btn btn-primary"
+          onClick={handleStart}
+          disabled={starting}
+          style={{ width: '100%', justifyContent: 'center', padding: '10px', fontSize: 14 }}
+        >
+          {starting ? (
+            <>
+              <span className="spinner" style={{ width: 14, height: 14 }} />
+              Starting…
+            </>
+          ) : (
+            'Start review →'
+          )}
+        </button>
       </div>
+    </div>
+  )
+}
 
-      <div className="card" style={{ padding: '1.25rem', textAlign: 'left', marginBottom: '2rem' }}>
-        <h3 style={{ fontWeight: 600, marginBottom: '0.75rem', fontSize: '0.9375rem' }}>What you&apos;ll do:</h3>
-        <ol style={{ paddingLeft: '1.25rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-          <li style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>
-            <strong style={{ color: 'var(--text)' }}>Remove</strong> — Click faces that don&apos;t belong in each cluster.
-          </li>
-          <li style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>
-            <strong style={{ color: 'var(--text)' }}>Merge</strong> — Select duplicate clusters of the same person to combine.
-          </li>
-          <li style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>
-            <strong style={{ color: 'var(--text)' }}>Reassign</strong> — Decide where each removed face belongs.
-          </li>
-          <li style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>
-            <strong style={{ color: 'var(--text)' }}>Export</strong> — Download a CSV of all changes.
-          </li>
-        </ol>
-      </div>
-
-      <button className="btn btn-primary" onClick={onStart} style={{ padding: '0.75rem 2.5rem', fontSize: '1rem' }}>
-        Start review →
-      </button>
+function StatCard({ value, label }: { value: string | number; label: string }) {
+  return (
+    <div style={{ textAlign: 'center', padding: '12px 8px', background: 'var(--bg)', borderRadius: 8 }}>
+      <div style={{ fontSize: 22, fontWeight: 700, color: 'var(--text)' }}>{value}</div>
+      <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>{label}</div>
     </div>
   )
 }

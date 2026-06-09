@@ -4,6 +4,8 @@ import Link from 'next/link'
 import ProjectCard from '@/components/dashboard/ProjectCard'
 import type { Project } from '@/lib/types'
 
+export const dynamic = 'force-dynamic'
+
 export default async function DashboardPage() {
   const supabase = createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -15,24 +17,36 @@ export default async function DashboardPage() {
     .eq('user_id', user.id)
     .order('updated_at', { ascending: false })
 
-  const activeProjects = (projects ?? []).filter((p: Project) => p.status === 'active')
-  const completedProjects = (projects ?? []).filter((p: Project) => p.status === 'completed')
-  const archivedProjects = (projects ?? []).filter((p: Project) => p.status === 'archived')
+  const all = (projects ?? []) as Project[]
+  const active = all.filter(p => p.status === 'active')
+  const completed = all.filter(p => p.status === 'completed')
+  const archived = all.filter(p => p.status === 'archived')
 
   return (
-    <div style={{ maxWidth: '960px', margin: '0 auto', padding: '2rem 1rem' }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '2rem' }}>
-        <h1 style={{ fontSize: '1.5rem', fontWeight: 700 }}>Your projects</h1>
+    <div className="page-fade" style={{ padding: '32px', maxWidth: 860 }}>
+      {/* Page header */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
+        <div>
+          <h1 style={{ fontSize: 18, fontWeight: 600, color: 'var(--text)' }}>Projects</h1>
+          {all.length > 0 && (
+            <p style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 2 }}>
+              {all.length} project{all.length !== 1 ? 's' : ''}
+            </p>
+          )}
+        </div>
         <Link href="/projects/new" className="btn btn-primary">
-          + New project
+          <svg width="13" height="13" viewBox="0 0 12 12" fill="none" style={{ flexShrink: 0 }}>
+            <path d="M6 1v10M1 6h10" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round"/>
+          </svg>
+          New project
         </Link>
       </div>
 
-      {(projects ?? []).length === 0 ? (
-        <div className="card" style={{ padding: '3rem', textAlign: 'center' }}>
-          <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>📁</div>
-          <h2 style={{ fontSize: '1.25rem', fontWeight: 600, marginBottom: '0.5rem' }}>No projects yet</h2>
-          <p style={{ color: 'var(--text-muted)', marginBottom: '1.5rem' }}>
+      {all.length === 0 ? (
+        <div className="empty-state" style={{ border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', background: 'var(--surface)' }}>
+          <div className="empty-icon">📁</div>
+          <h2 style={{ fontSize: 15, fontWeight: 600, marginBottom: 6 }}>No projects yet</h2>
+          <p style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 20, maxWidth: 300 }}>
             Create your first QC project by uploading a cluster folder.
           </p>
           <Link href="/projects/new" className="btn btn-primary">
@@ -40,25 +54,23 @@ export default async function DashboardPage() {
           </Link>
         </div>
       ) : (
-        <>
-          {activeProjects.length > 0 && (
-            <Section title="Active" count={activeProjects.length}>
-              {activeProjects.map((p: Project) => <ProjectCard key={p.id} project={p} />)}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+          {active.length > 0 && (
+            <Section title="Active" count={active.length}>
+              {active.map(p => <ProjectCard key={p.id} project={p} />)}
             </Section>
           )}
-
-          {completedProjects.length > 0 && (
-            <Section title="Completed" count={completedProjects.length}>
-              {completedProjects.map((p: Project) => <ProjectCard key={p.id} project={p} />)}
+          {completed.length > 0 && (
+            <Section title="Completed" count={completed.length}>
+              {completed.map(p => <ProjectCard key={p.id} project={p} />)}
             </Section>
           )}
-
-          {archivedProjects.length > 0 && (
-            <Section title="Archived" count={archivedProjects.length}>
-              {archivedProjects.map((p: Project) => <ProjectCard key={p.id} project={p} />)}
+          {archived.length > 0 && (
+            <Section title="Archived" count={archived.length}>
+              {archived.map(p => <ProjectCard key={p.id} project={p} />)}
             </Section>
           )}
-        </>
+        </div>
       )}
     </div>
   )
@@ -66,11 +78,14 @@ export default async function DashboardPage() {
 
 function Section({ title, count, children }: { title: string; count: number; children: React.ReactNode }) {
   return (
-    <div style={{ marginBottom: '2.5rem' }}>
-      <h2 style={{ fontSize: '0.9375rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '0.75rem' }}>
-        {title} ({count})
-      </h2>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '1rem' }}>
+    <div style={{ marginTop: 24 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+        <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-subtle)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+          {title}
+        </span>
+        <span style={{ fontSize: 11, color: 'var(--text-subtle)' }}>{count}</span>
+      </div>
+      <div className="project-list">
         {children}
       </div>
     </div>

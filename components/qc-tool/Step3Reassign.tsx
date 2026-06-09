@@ -10,6 +10,7 @@ interface Step3Props {
   currentRemovedIndex: number
   currentRemovedFace: RemovedFace | null
   getImageUrl: (filename: string) => string | undefined
+  getFullImageUrl: (filename: string) => string | undefined
   onAssign: (filename: string, clusterId: string) => void
   onCreateNew: (filename: string) => void
   onDiscard: (filename: string) => void
@@ -24,6 +25,7 @@ export default function Step3Reassign({
   currentRemovedIndex,
   currentRemovedFace,
   getImageUrl,
+  getFullImageUrl,
   onAssign,
   onCreateNew,
   onDiscard,
@@ -60,7 +62,7 @@ export default function Step3Reassign({
     search ? c.id.toLowerCase().includes(search.toLowerCase()) : true
   )
 
-  const faceUrl = getImageUrl(currentRemovedFace.filename)
+  const faceUrl = getFullImageUrl(currentRemovedFace.filename) || getImageUrl(currentRemovedFace.filename)
 
   return (
     <div style={{ display: 'grid', gridTemplateColumns: '1fr 340px', height: 'calc(100vh - 56px)', overflow: 'hidden' }}>

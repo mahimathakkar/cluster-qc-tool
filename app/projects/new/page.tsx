@@ -5,8 +5,16 @@ import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { uploadImagesWithProgress, getStoragePath } from '@/lib/storage'
 import { createProject, initProjectState } from '@/lib/project'
+import { generateThumbnail } from '@/lib/thumbnail'
 import ProgressBar from '@/components/ui/ProgressBar'
 import type { ClusterState, UploadProgress } from '@/lib/types'
+
+const IMAGE_EXTENSIONS = new Set(['.jpg', '.jpeg', '.png', '.webp', '.gif', '.bmp', '.tiff', '.tif'])
+
+function isImageFile(filename: string): boolean {
+  const ext = filename.slice(filename.lastIndexOf('.')).toLowerCase()
+  return IMAGE_EXTENSIONS.has(ext)
+}
 
 type Stage = 'form' | 'uploading' | 'done'
 
@@ -27,12 +35,12 @@ export default function NewProjectPage() {
     if (!fl || fl.length === 0) return
     setFiles(fl)
 
-    // Detect clusters (unique first-level subdirectory names)
+    // Detect clusters (unique first-level subdirectory names) — images only
     const clusterIds = new Set<string>()
     let count = 0
     for (let i = 0; i < fl.length; i++) {
       const parts = (fl[i].webkitRelativePath || fl[i].name).split('/')
-      if (parts.length >= 2) {
+      if (parts.length >= 2 && isImageFile(parts[parts.length - 1])) {
         clusterIds.add(parts[1])
         count++
       }
@@ -65,8 +73,9 @@ export default function NewProjectPage() {
         const file = files[i]
         const parts = (file.webkitRelativePath || file.name).split('/')
         if (parts.length < 2) continue
-        const clusterId = parts[1]
         const filename = parts[parts.length - 1]
+        if (!isImageFile(filename)) continue
+        const clusterId = parts[1]
         fileList.push({ file, clusterId, filename })
 
         if (!clusterMap.has(clusterId)) clusterMap.set(clusterId, [])
@@ -114,6 +123,20 @@ export default function NewProjectPage() {
           id,
           faces: filenames.map(fn => ({ filename: fn, originalCluster: id })),
         }))
+
+      // Generate + upload thumbnails (best-effort, non-blocking for UX)
+      const THUMB_CONCURRENCY = 10
+      const BUCKET = 'cluster-images'
+      for (let i = 0; i < fileList.length; i += THUMB_CONCURRENCY) {
+        const batch = fileList.slice(i, i + THUMB_CONCURRENCY)
+        await Promise.all(batch.map(async ({ file, clusterId, filename }) => {
+          const sp = storagePaths.find(p => p.clusterId === clusterId && p.filename === filename)
+          if (!sp) return
+          const blob = await generateThumbnail(file)
+          if (!blob) return
+          await supabase.storage.from(BUCKET).upload(`thumbnails/${sp.storagePath}`, blob, { upsert: true, contentType: 'image/jpeg' })
+        }))
+      }
 
       // Init project state + update step
       await initProjectState(project.id, clusters)

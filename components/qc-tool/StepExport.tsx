@@ -8,13 +8,14 @@ import { useToast } from '@/components/ui/Toast'
 
 interface StepExportProps {
   projectId: string
+  projectName: string
   clusters: ClusterState[]
   removed: RemovedFace[]
   discarded: string[]
   onComplete: () => void
 }
 
-export default function StepExport({ projectId, clusters, removed, discarded, onComplete }: StepExportProps) {
+export default function StepExport({ projectId, projectName, clusters, removed, discarded, onComplete }: StepExportProps) {
   const { showToast } = useToast()
   const [completing, setCompleting] = useState(false)
 

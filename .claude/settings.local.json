@@ -7,7 +7,9 @@
       "Bash(sed -i '' 's/const nextConfig: NextConfig = {/const nextConfig = {/' /Users/mahimathakkar/cluster-qc-tool/next.config.mjs)",
       "Bash(git init *)",
       "Bash(git add *)",
-      "Bash(git commit *)"
+      "Bash(git commit *)",
+      "Bash(npx tsc *)",
+      "Bash(npx next *)"
     ]
   }
 }

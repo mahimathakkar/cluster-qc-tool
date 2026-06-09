@@ -1,12 +1,13 @@
 'use client'
 
 import Link from 'next/link'
+import { useState } from 'react'
 import type { Project, ProjectStep } from '@/lib/types'
 import { archiveProject } from '@/lib/project'
 import { useRouter } from 'next/navigation'
 
 const STEP_LABELS: Record<ProjectStep, string> = {
-  upload: 'Upload',
+  upload: 'Uploading',
   ready: 'Ready',
   '1': 'Remove',
   '2': 'Merge',
@@ -14,80 +15,92 @@ const STEP_LABELS: Record<ProjectStep, string> = {
   export: 'Export',
 }
 
-const STEP_ORDER: ProjectStep[] = ['upload', 'ready', '1', '2', '3', 'export']
+const PROJECT_COLORS = [
+  '#6366F1', '#8B5CF6', '#EC4899', '#F59E0B',
+  '#10B981', '#3B82F6', '#EF4444', '#F97316',
+]
 
-interface ProjectCardProps {
-  project: Project
-  onArchived?: () => void
+function colorForName(name: string): string {
+  let h = 0
+  for (let i = 0; i < name.length; i++) h = ((h << 5) - h + name.charCodeAt(i)) | 0
+  return PROJECT_COLORS[Math.abs(h) % PROJECT_COLORS.length]
 }
 
-export default function ProjectCard({ project, onArchived }: ProjectCardProps) {
+export default function ProjectCard({ project }: { project: Project }) {
   const router = useRouter()
-  const stepIdx = STEP_ORDER.indexOf(project.current_step)
-  const progress = Math.round((stepIdx / (STEP_ORDER.length - 1)) * 100)
+  const [archiving, setArchiving] = useState(false)
+  const [hovered, setHovered] = useState(false)
+  const bg = colorForName(project.name)
 
   async function handleArchive(e: React.MouseEvent) {
     e.preventDefault()
+    e.stopPropagation()
     if (!confirm('Archive this project?')) return
+    setArchiving(true)
     await archiveProject(project.id)
-    onArchived?.()
     router.refresh()
   }
 
+  const href = project.status === 'completed'
+    ? `/projects/${project.id}?step=export`
+    : project.status === 'archived'
+    ? '#'
+    : `/projects/${project.id}`
+
   return (
-    <div className="card" style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-      {/* Top row */}
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '0.5rem' }}>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <h3 style={{ fontWeight: 600, fontSize: '0.9375rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            {project.name}
-          </h3>
-          {project.description && (
-            <p style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginTop: '0.125rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              {project.description}
-            </p>
-          )}
+    <div
+      className="project-row"
+      style={{ background: hovered ? 'var(--bg)' : 'var(--surface)' }}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+    >
+      {/* Color icon */}
+      <div className="project-icon" style={{ background: bg }}>
+        {project.name.charAt(0).toUpperCase()}
+      </div>
+
+      {/* Name + description */}
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontWeight: 500, fontSize: 14, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {project.name}
         </div>
+        {project.description && (
+          <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {project.description}
+          </div>
+        )}
+      </div>
+
+      {/* Right side: step | badge | date | action — 24px gap */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 24, flexShrink: 0 }}>
+        <span style={{ fontSize: 12, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
+          {STEP_LABELS[project.current_step]}
+        </span>
         <StatusBadge status={project.status} />
-      </div>
-
-      {/* Step progress */}
-      <div>
-        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', marginBottom: '0.25rem' }}>
-          <span style={{ color: 'var(--text-muted)' }}>Step: {STEP_LABELS[project.current_step]}</span>
-          <span style={{ fontWeight: 600 }}>{progress}%</span>
-        </div>
-        <div style={{ height: '4px', background: 'var(--border)', borderRadius: '9999px', overflow: 'hidden' }}>
-          <div style={{ height: '100%', width: `${progress}%`, background: project.status === 'completed' ? 'var(--green)' : 'var(--blue)', borderRadius: '9999px', transition: 'width 0.3s' }} />
-        </div>
-      </div>
-
-      {/* Dates */}
-      <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-        Updated {formatDate(project.updated_at)} · Created {formatDate(project.created_at)}
+        <span style={{ fontSize: 12, color: 'var(--text-subtle)', whiteSpace: 'nowrap', minWidth: 72, textAlign: 'right' }}>
+          {formatDate(project.updated_at)}
+        </span>
       </div>
 
       {/* Actions */}
-      <div style={{ display: 'flex', gap: '0.5rem', paddingTop: '0.25rem', borderTop: '1px solid var(--border)' }}>
-        {project.status === 'archived' ? (
-          <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>Archived</span>
-        ) : project.status === 'completed' ? (
-          <Link href={`/projects/${project.id}?step=export`} className="btn btn-secondary" style={{ fontSize: '0.8125rem' }}>
-            View export
-          </Link>
-        ) : (
-          <Link href={`/projects/${project.id}`} className="btn btn-primary" style={{ fontSize: '0.8125rem' }}>
-            Continue →
-          </Link>
-        )}
+      <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexShrink: 0, marginLeft: 8 }}>
         {project.status === 'active' && (
           <button
-            className="btn btn-secondary"
+            className="btn btn-ghost btn-sm"
             onClick={handleArchive}
-            style={{ fontSize: '0.8125rem', marginLeft: 'auto', color: 'var(--text-muted)' }}
+            disabled={archiving}
+            style={{ color: 'var(--text-subtle)' }}
           >
-            Archive
+            {archiving ? '…' : 'Archive'}
           </button>
+        )}
+        {project.status !== 'archived' && (
+          <Link
+            href={href}
+            className={`btn btn-sm ${project.status === 'active' ? 'btn-primary' : 'btn-secondary'}`}
+          >
+            {project.status === 'completed' ? 'View' : 'Open'}
+          </Link>
         )}
       </div>
     </div>
@@ -96,8 +109,8 @@ export default function ProjectCard({ project, onArchived }: ProjectCardProps) {
 
 function StatusBadge({ status }: { status: Project['status'] }) {
   const map = {
-    active: { cls: 'badge-blue', label: 'Active' },
-    completed: { cls: 'badge-green', label: 'Completed' },
+    active: { cls: 'badge-accent', label: 'Active' },
+    completed: { cls: 'badge-green', label: 'Done' },
     archived: { cls: 'badge-gray', label: 'Archived' },
   }
   const { cls, label } = map[status]
@@ -109,8 +122,8 @@ function formatDate(iso: string) {
   const now = new Date()
   const diff = now.getTime() - d.getTime()
   const days = Math.floor(diff / 86400000)
-  if (days === 0) return 'today'
-  if (days === 1) return 'yesterday'
+  if (days === 0) return 'Today'
+  if (days === 1) return 'Yesterday'
   if (days < 7) return `${days}d ago`
-  return d.toLocaleDateString()
+  return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
 }

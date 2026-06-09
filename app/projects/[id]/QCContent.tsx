@@ -24,11 +24,10 @@ export default function QCContent({ project, initialState, onStepChange }: QCCon
   const router = useRouter()
   const { showToast } = useToast()
   const [currentStep, setCurrentStep] = useState<ProjectStep>(project.current_step as ProjectStep)
+  const [transitioning, setTransitioning] = useState(false)
+  const [backLoading, setBackLoading] = useState(false)
 
-  const handleStateChange = useCallback((_s: PersistedQCState) => {
-    // Intentionally empty — auto-save reads from persistedState ref directly
-  }, [])
-
+  const handleStateChange = useCallback((_s: PersistedQCState) => {}, [])
   const qc = useQCState(initialState, handleStateChange)
 
   const persistedState: PersistedQCState = {
@@ -41,25 +40,29 @@ export default function QCContent({ project, initialState, onStepChange }: QCCon
   }
 
   const { saveStatus, forceSave } = useAutoSave(project.id, persistedState, true)
-  const { loadClusterImages, getImageUrl, preloadCluster } = useImageCache(project.id)
+  const { loadClusterImages, getImageUrl, getFullImageUrl, preloadCluster } = useImageCache(project.id)
 
   async function navigateStep(step: ProjectStep) {
+    setTransitioning(true)
     setCurrentStep(step)
     try {
       await onStepChange(step)
     } catch {
       showToast('Failed to save step progress', 'error')
+    } finally {
+      setTransitioning(false)
     }
   }
 
   async function handleBack() {
+    setBackLoading(true)
     await forceSave()
     router.push('/dashboard')
+    router.refresh()
   }
 
   function handleStep1Confirm() {
     qc.confirmClusterReview()
-    // Check if we're on the last cluster after confirmation
     const nextIdx = qc.currentClusterIndex + 1
     if (nextIdx >= qc.activeClusters.length) {
       navigateStep('2')
@@ -77,8 +80,18 @@ export default function QCContent({ project, initialState, onStepChange }: QCCon
         projectId={project.id}
         currentStep={currentStep}
         saveStatus={saveStatus}
+        backLoading={backLoading}
         onBack={handleBack}
       />
+
+      {transitioning && (
+        <div className="step-overlay">
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
+            <div className="spinner" style={{ width: 28, height: 28 }} />
+            <span style={{ fontSize: 13, color: 'var(--text-muted)', fontWeight: 500 }}>Loading…</span>
+          </div>
+        </div>
+      )}
 
       {currentStep === 'upload' && (
         <div style={{ maxWidth: '500px', margin: '4rem auto', textAlign: 'center', padding: '0 1rem' }}>
@@ -102,8 +115,10 @@ export default function QCContent({ project, initialState, onStepChange }: QCCon
           currentCluster={qc.currentCluster}
           pendingRemovals={qc.pendingRemovals}
           getImageUrl={getImageUrl}
+          getFullImageUrl={getFullImageUrl}
           onToggleFace={qc.toggleFaceRemoval}
           onClearRemovals={qc.clearPendingRemovals}
+          onRemoveSelected={qc.removeSelectedFaces}
           onConfirmCluster={handleStep1Confirm}
           onGoBack={qc.goBackCluster}
           onLoadImages={loadClusterImages}
@@ -131,6 +146,7 @@ export default function QCContent({ project, initialState, onStepChange }: QCCon
           currentRemovedIndex={qc.currentRemovedIndex}
           currentRemovedFace={qc.currentRemovedFace}
           getImageUrl={getImageUrl}
+          getFullImageUrl={getFullImageUrl}
           onAssign={qc.assignFaceToCluster}
           onCreateNew={qc.createNewClusterForFace}
           onDiscard={qc.discardFace}
@@ -143,6 +159,7 @@ export default function QCContent({ project, initialState, onStepChange }: QCCon
       {currentStep === 'export' && (
         <StepExport
           projectId={project.id}
+          projectName={project.name}
           clusters={qc.clusters}
           removed={qc.removed}
           discarded={qc.discarded}

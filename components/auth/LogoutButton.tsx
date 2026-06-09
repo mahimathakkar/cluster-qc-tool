@@ -14,18 +14,7 @@ export default function LogoutButton() {
   }
 
   return (
-    <button
-      onClick={handleLogout}
-      style={{
-        background: 'none',
-        border: 'none',
-        cursor: 'pointer',
-        fontSize: '0.875rem',
-        color: 'var(--text-muted)',
-        padding: '0.25rem 0.5rem',
-        borderRadius: '6px',
-      }}
-    >
+    <button onClick={handleLogout} className="btn btn-ghost btn-sm" style={{ width: '100%', justifyContent: 'flex-start' }}>
       Sign out
     </button>
   )

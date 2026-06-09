@@ -3,24 +3,24 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import LogoutButton from '@/components/auth/LogoutButton'
+import AdminNav from '@/components/admin/AdminNav'
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const supabase = createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/auth/login')
 
-  let { data: profile } = await supabase
+  const adminDb = createAdminClient()
+  let { data: profile } = await adminDb
     .from('profiles')
     .select('email, role')
     .eq('id', user.id)
     .single()
 
-  // Same fallback as dashboard: create profile row if missing
   if (!profile) {
-    const admin = createAdminClient()
-    const { data: created } = await admin
+    const { data: created } = await adminDb
       .from('profiles')
-      .upsert({ id: user.id, email: user.email ?? '', role: 'user' })
+      .insert({ id: user.id, email: user.email ?? '', role: 'user' })
       .select('email, role')
       .single()
     profile = created
@@ -30,36 +30,45 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     redirect('/dashboard')
   }
 
+  const displayEmail = profile?.email ?? user.email ?? ''
+  const emailInitial = displayEmail.charAt(0).toUpperCase()
+
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--bg)' }}>
-      <nav style={{
-        background: 'var(--surface)',
-        borderBottom: '1px solid var(--border)',
-        padding: '0 1.5rem',
-        height: '56px',
-        display: 'flex',
-        alignItems: 'center',
-        gap: '1rem',
-        position: 'sticky',
-        top: 0,
-        zIndex: 100,
-      }}>
-        <Link href="/admin" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', textDecoration: 'none', color: 'var(--text)' }}>
-          <div style={{ width: '1.75rem', height: '1.75rem', background: 'var(--purple)', borderRadius: '5px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 700, fontSize: '0.75rem' }}>
-            AD
-          </div>
-          <span style={{ fontWeight: 700, fontSize: '0.9375rem' }}>Admin Panel</span>
+    <div className="app-shell">
+      {/* ─── Sidebar ─────────────────────────────── */}
+      <aside className="app-sidebar">
+        <Link href="/admin" className="sidebar-logo">
+          <div className="sidebar-logo-icon" style={{ background: 'var(--purple)' }}>AD</div>
+          <span style={{ fontWeight: 600, fontSize: 14 }}>Admin Panel</span>
         </Link>
 
-        <Link href="/admin" style={{ fontSize: '0.875rem', color: 'var(--text-muted)', textDecoration: 'none' }}>Overview</Link>
-        <Link href="/admin/users" style={{ fontSize: '0.875rem', color: 'var(--text-muted)', textDecoration: 'none' }}>Users</Link>
+        <AdminNav />
 
-        <div style={{ flex: 1 }} />
-        <Link href="/dashboard" style={{ fontSize: '0.875rem', color: 'var(--text-muted)', textDecoration: 'none' }}>← My projects</Link>
-        <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>{profile?.email ?? user.email}</span>
-        <LogoutButton />
-      </nav>
-      <main>{children}</main>
+        <div className="sidebar-footer">
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 2px' }}>
+            <div style={{
+              width: 26, height: 26, borderRadius: '50%',
+              background: 'var(--purple-light)', color: 'var(--purple)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: 11, fontWeight: 700, flexShrink: 0,
+            }}>
+              {emailInitial}
+            </div>
+            <span style={{ fontSize: 12, color: 'var(--text-muted)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {displayEmail}
+            </span>
+          </div>
+          <Link href="/dashboard" style={{ fontSize: 12, color: 'var(--text-muted)', textDecoration: 'none', padding: '4px 2px', display: 'block' }}>
+            ← My projects
+          </Link>
+          <LogoutButton />
+        </div>
+      </aside>
+
+      {/* ─── Main content ────────────────────────── */}
+      <main className="app-main">
+        {children}
+      </main>
     </div>
   )
 }

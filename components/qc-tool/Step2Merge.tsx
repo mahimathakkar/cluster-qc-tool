@@ -29,79 +29,69 @@ export default function Step2Merge({
   const canMerge = selectedClusters.size >= 2
 
   return (
-    <div style={{ padding: '1.5rem', maxWidth: '1200px', margin: '0 auto' }}>
-      {/* Header bar */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '0.75rem' }}>
+    <>
+      {/* ── Sticky action bar below main header ── */}
+      <div className="sticky-action-bar" style={{ justifyContent: 'space-between' }}>
         <div>
-          <h2 style={{ fontWeight: 700, fontSize: '1.125rem' }}>Merge duplicate clusters</h2>
-          <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', marginTop: '0.125rem' }}>
-            Select 2+ clusters that belong to the same person. The lowest ID absorbs the others.
-          </p>
+          <span style={{ fontWeight: 600, fontSize: 14 }}>Merge duplicate clusters</span>
+          <span style={{ fontSize: 13, color: 'var(--text-muted)', marginLeft: 10 }}>
+            Select 2+ that belong to the same person
+          </span>
+          {selectedClusters.size > 0 && (
+            <span style={{ fontSize: 13, marginLeft: 10 }}>
+              <span style={{ fontWeight: 600, color: 'var(--amber)' }}>{selectedClusters.size} selected</span>
+              {canMerge && (
+                <span style={{ color: 'var(--text-muted)' }}> → merges into <strong>{targetCluster}</strong></span>
+              )}
+              {!canMerge && (
+                <span style={{ color: 'var(--text-muted)' }}> — select one more</span>
+              )}
+            </span>
+          )}
         </div>
 
-        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
           {selectedClusters.size > 0 && (
-            <button className="btn btn-secondary" onClick={onClearSelections} style={{ fontSize: '0.8125rem' }}>
+            <button className="btn btn-secondary btn-sm" onClick={onClearSelections}>
               Clear
             </button>
           )}
           {canMerge && (
-            <button className="btn btn-amber" onClick={onMerge} style={{ fontSize: '0.8125rem' }}>
+            <button className="btn btn-amber btn-sm" onClick={onMerge}>
               Merge {selectedClusters.size} → {targetCluster}
             </button>
           )}
-          <button className="btn btn-primary" onClick={onContinue} style={{ fontSize: '0.8125rem' }}>
+          <button className="btn btn-primary btn-sm" onClick={onContinue}>
             Done with merges →
           </button>
         </div>
       </div>
 
-      {/* Selected info */}
-      {selectedClusters.size > 0 && (
+      {/* ── Cluster grid ── */}
+      <div style={{ padding: 20, maxWidth: 1400, margin: '0 auto' }}>
         <div style={{
-          padding: '0.75rem 1rem',
-          background: 'var(--amber-light)',
-          borderRadius: '8px',
-          marginBottom: '1rem',
-          fontSize: '0.875rem',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '0.5rem',
-          flexWrap: 'wrap',
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
+          gap: 16,
         }}>
-          <span style={{ fontWeight: 600 }}>{selectedClusters.size} clusters selected</span>
-          {canMerge && (
-            <span style={{ color: '#92400e' }}>
-              → Will merge into <strong>{targetCluster}</strong>
-            </span>
-          )}
-          {!canMerge && <span style={{ color: '#92400e' }}>Select one more to enable merge</span>}
+          {activeClusters.map(cluster => (
+            <ClusterCard
+              key={cluster.id}
+              cluster={cluster}
+              selected={selectedClusters.has(cluster.id)}
+              getImageUrl={getImageUrl}
+              onSelect={onToggleCluster}
+              onLoadImages={onLoadImages}
+            />
+          ))}
         </div>
-      )}
 
-      {/* Cluster grid */}
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
-        gap: '0.75rem',
-      }}>
-        {activeClusters.map(cluster => (
-          <ClusterCard
-            key={cluster.id}
-            cluster={cluster}
-            selected={selectedClusters.has(cluster.id)}
-            getImageUrl={getImageUrl}
-            onSelect={onToggleCluster}
-            onLoadImages={onLoadImages}
-          />
-        ))}
+        {activeClusters.length === 0 && (
+          <div style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '3rem' }}>
+            No clusters to display.
+          </div>
+        )}
       </div>
-
-      {activeClusters.length === 0 && (
-        <div style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '3rem' }}>
-          No clusters to display.
-        </div>
-      )}
-    </div>
+    </>
   )
 }

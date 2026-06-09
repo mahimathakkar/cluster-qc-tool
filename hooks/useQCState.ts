@@ -8,6 +8,7 @@ export interface QCActions {
   pendingRemovals: Set<string>
   toggleFaceRemoval: (filename: string) => void
   clearPendingRemovals: () => void
+  removeSelectedFaces: () => void
   confirmClusterReview: () => void
   goBackCluster: () => void
 
@@ -80,6 +81,29 @@ export function useQCState(initial: PersistedQCState, onChange: (state: Persiste
   const clearPendingRemovals = useCallback(() => {
     setPendingRemovals(new Set())
   }, [])
+
+  const removeSelectedFaces = useCallback(() => {
+    if (!currentCluster || pendingRemovals.size === 0) return
+
+    const newRemovedFaces: RemovedFace[] = Array.from(pendingRemovals).map(filename => ({
+      filename,
+      sourceCluster: currentCluster.id,
+      isDiscarded: false,
+      isNewCluster: false,
+    }))
+
+    const updatedClusters = clusters.map(c => {
+      if (c.id !== currentCluster.id) return c
+      return { ...c, faces: c.faces.filter(f => !pendingRemovals.has(f.filename)) }
+    })
+
+    const newRemoved = [...removed, ...newRemovedFaces]
+
+    setClusters(updatedClusters)
+    setRemoved(newRemoved)
+    setPendingRemovals(new Set())
+    notify(updatedClusters, newRemoved, discarded, currentClusterIndex, currentRemovedIndex, newClusterCounter)
+  }, [currentCluster, pendingRemovals, clusters, removed, discarded, currentClusterIndex, currentRemovedIndex, newClusterCounter, onChange])
 
   const confirmClusterReview = useCallback(() => {
     if (!currentCluster) return
@@ -294,6 +318,7 @@ export function useQCState(initial: PersistedQCState, onChange: (state: Persiste
     totalFacesChanged,
     toggleFaceRemoval,
     clearPendingRemovals,
+    removeSelectedFaces,
     confirmClusterReview,
     goBackCluster,
     toggleClusterSelection,

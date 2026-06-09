@@ -26,7 +26,7 @@ export async function uploadImagesWithProgress(
   onProgress: (progress: UploadProgress) => void
 ): Promise<{ storagePaths: { clusterId: string; filename: string; storagePath: string }[]; failedFiles: string[] }> {
   const supabase = createClient()
-  const CONCURRENCY = 5
+  const CONCURRENCY = 10
   const storagePaths: { clusterId: string; filename: string; storagePath: string }[] = []
   const failedFiles: string[] = []
   let uploaded = 0
@@ -97,7 +97,7 @@ export async function getSignedUrl(storagePath: string): Promise<string | null> 
 export async function getClusterStoragePaths(
   projectId: string,
   clusterId: string
-): Promise<{ filename: string; storagePath: string }[]> {
+): Promise<{ filename: string; storagePath: string; thumbnailPath: string }[]> {
   const supabase = createClient()
   const { data, error } = await supabase
     .from('project_images')
@@ -105,7 +105,11 @@ export async function getClusterStoragePaths(
     .eq('project_id', projectId)
     .eq('cluster_id', clusterId)
   if (error) return []
-  return (data ?? []).map(r => ({ filename: r.filename, storagePath: r.storage_path }))
+  return (data ?? []).map(r => ({
+    filename: r.filename,
+    storagePath: r.storage_path,
+    thumbnailPath: `thumbnails/${r.storage_path}`,
+  }))
 }
 
 export async function getProjectStoragePaths(

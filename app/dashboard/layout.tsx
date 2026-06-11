@@ -3,6 +3,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import LogoutButton from '@/components/auth/LogoutButton'
+import OnboardingTrigger from '@/components/onboarding/OnboardingTrigger'
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const supabase = createClient()
@@ -78,6 +79,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
               {displayEmail}
             </span>
           </div>
+          <OnboardingTrigger />
           <LogoutButton />
         </div>
       </aside>

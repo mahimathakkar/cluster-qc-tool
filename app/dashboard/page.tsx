@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import ProjectCard from '@/components/dashboard/ProjectCard'
+import OnboardingModal from '@/components/onboarding/OnboardingModal'
 import type { Project } from '@/lib/types'
 
 export const dynamic = 'force-dynamic'
@@ -23,6 +24,8 @@ export default async function DashboardPage() {
   const archived = all.filter(p => p.status === 'archived')
 
   return (
+    <>
+    <OnboardingModal />
     <div className="page-fade" style={{ padding: '32px', maxWidth: 860 }}>
       {/* Page header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
@@ -73,6 +76,7 @@ export default async function DashboardPage() {
         </div>
       )}
     </div>
+    </>
   )
 }
 
